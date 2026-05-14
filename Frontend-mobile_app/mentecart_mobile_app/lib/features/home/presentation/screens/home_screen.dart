@@ -99,6 +99,16 @@ class _HomeScreenState extends State<HomeScreen> {
       return;
     }
 
+    if (index == 3) {
+      Navigator.pushReplacementNamed(context, AppRoutes.bookings);
+      return;
+    }
+
+    if (index == 4) {
+      Navigator.pushReplacementNamed(context, AppRoutes.profile);
+      return;
+    }
+
     setState(() {
       _currentIndex = index;
     });

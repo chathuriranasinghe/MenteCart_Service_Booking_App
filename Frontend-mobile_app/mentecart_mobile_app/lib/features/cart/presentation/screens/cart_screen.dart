@@ -136,7 +136,7 @@ class _CartScreenState extends State<CartScreen> {
       return;
     }
 
-    // TODO: Navigate to checkout screen after creating checkout page.
+    Navigator.pushNamed(context, AppRoutes.checkout);
   }
 
   void _handleNavItemSelected(int index) {
@@ -154,11 +154,19 @@ class _CartScreenState extends State<CartScreen> {
       return;
     }
 
+    if (index == 3) {
+      Navigator.pushReplacementNamed(context, AppRoutes.bookings);
+      return;
+    }
+
+    if (index == 4) {
+      Navigator.pushReplacementNamed(context, AppRoutes.profile);
+      return;
+    }
+
     setState(() {
       _currentNavIndex = index;
     });
-
-    // TODO: Add navigation for Bookings and Profile after creating those screens.
   }
 
   @override

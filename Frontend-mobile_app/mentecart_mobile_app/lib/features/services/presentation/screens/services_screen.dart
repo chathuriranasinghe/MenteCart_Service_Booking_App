@@ -127,6 +127,16 @@ class _ServicesScreenState extends State<ServicesScreen> {
       return;
     }
 
+    if (index == 3) {
+      Navigator.pushReplacementNamed(context, AppRoutes.bookings);
+      return;
+    }
+
+    if (index == 4) {
+      Navigator.pushReplacementNamed(context, AppRoutes.profile);
+      return;
+    }
+
     setState(() {
       _currentNavIndex = index;
     });

@@ -9,4 +9,7 @@ class AppRoutes {
   static const String services = '/services';
   static const String serviceDetail = '/service-detail';
   static const String cart = '/cart';
+  static const String checkout = '/checkout';
+  static const String bookings = '/bookings';
+  static const String profile = '/profile';
 }

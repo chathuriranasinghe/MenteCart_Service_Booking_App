@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
-
 import '../../features/auth/presentation/screens/forgot_password_screen.dart';
 import '../../features/auth/presentation/screens/login_screen.dart';
 import '../../features/auth/presentation/screens/sign_up_screen.dart';
+import '../../features/bookings/presentation/screens/bookings_screen.dart';
 import '../../features/cart/presentation/screens/cart_screen.dart';
+import '../../features/checkout/presentation/screens/checkout_screen.dart';
 import '../../features/home/presentation/screens/home_screen.dart';
+import '../../features/profile/presentation/screens/profile_screen.dart';
 import '../../features/services/presentation/screens/service_detail_screen.dart';
 import '../../features/services/presentation/screens/services_screen.dart';
 import '../../features/splash/presentation/screens/splash_screen.dart';
@@ -35,17 +37,24 @@ class RouteGenerator {
 
       case AppRoutes.serviceDetail:
         final args = settings.arguments;
-
         if (args is ServiceDetailArgs) {
           return MaterialPageRoute(
             builder: (_) => ServiceDetailScreen(args: args),
           );
         }
-
         return MaterialPageRoute(builder: (_) => const ServicesScreen());
 
       case AppRoutes.cart:
         return MaterialPageRoute(builder: (_) => const CartScreen());
+
+      case AppRoutes.checkout:
+        return MaterialPageRoute(builder: (_) => const CheckoutScreen());
+
+      case AppRoutes.bookings:
+        return MaterialPageRoute(builder: (_) => const BookingsScreen());
+
+      case AppRoutes.profile:
+        return MaterialPageRoute(builder: (_) => const ProfileScreen());
 
       default:
         return MaterialPageRoute(builder: (_) => const SplashScreen());
