@@ -6,11 +6,11 @@ class HomeSearchBar extends StatelessWidget {
   const HomeSearchBar({
     super.key,
     required this.controller,
-    required this.onFilterPressed,
+    required this.onSubmitted,
   });
 
   final TextEditingController controller;
-  final VoidCallback onFilterPressed;
+  final ValueChanged<String> onSubmitted;
 
   @override
   Widget build(BuildContext context) {
@@ -29,6 +29,8 @@ class HomeSearchBar extends StatelessWidget {
           Expanded(
             child: TextField(
               controller: controller,
+              textInputAction: TextInputAction.search,
+              onSubmitted: onSubmitted,
               decoration: const InputDecoration(
                 hintText: 'Search services...',
                 hintStyle: TextStyle(fontSize: 14, color: Color(0xFF9CA3AF)),
@@ -36,10 +38,12 @@ class HomeSearchBar extends StatelessWidget {
               ),
             ),
           ),
-          Container(width: 1, height: 24, color: const Color(0xFFE5E7EB)),
           IconButton(
-            onPressed: onFilterPressed,
-            icon: const Icon(Icons.tune_rounded, color: AppColors.primary),
+            onPressed: () => onSubmitted(controller.text),
+            icon: const Icon(Icons.send_rounded, size: 18, color: AppColors.primary),
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            constraints: const BoxConstraints(),
+            splashRadius: 20,
           ),
         ],
       ),

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../app/theme/app_colors.dart';
+import '../../../../features/cart/bloc/cart_bloc.dart';
 
 class HomeBottomNavBar extends StatelessWidget {
   const HomeBottomNavBar({
@@ -14,6 +16,12 @@ class HomeBottomNavBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cartCount = context.select<CartBloc, int>((bloc) {
+      final state = bloc.state;
+      if (state is CartLoaded) return state.items.length;
+      return 0;
+    });
+
     return Container(
       height: 76,
       padding: const EdgeInsets.symmetric(horizontal: 8),
@@ -39,7 +47,7 @@ class HomeBottomNavBar extends StatelessWidget {
             icon: Icons.shopping_cart_outlined,
             label: 'Cart',
             isSelected: currentIndex == 2,
-            showBadge: true,
+            badgeCount: cartCount,
             onTap: () => onItemSelected(2),
           ),
           _NavItem(
@@ -66,14 +74,14 @@ class _NavItem extends StatelessWidget {
     required this.label,
     required this.isSelected,
     required this.onTap,
-    this.showBadge = false,
+    this.badgeCount = 0,
   });
 
   final IconData icon;
   final String label;
   final bool isSelected;
   final VoidCallback onTap;
-  final bool showBadge;
+  final int badgeCount;
 
   @override
   Widget build(BuildContext context) {
@@ -92,21 +100,21 @@ class _NavItem extends StatelessWidget {
                 clipBehavior: Clip.none,
                 children: [
                   Icon(icon, color: color, size: 23),
-                  if (showBadge)
+                  if (badgeCount > 0)
                     Positioned(
                       top: -5,
                       right: -8,
                       child: Container(
-                        width: 16,
-                        height: 16,
+                        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                        constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
                         decoration: const BoxDecoration(
                           color: Color(0xFFEF4444),
                           shape: BoxShape.circle,
                         ),
-                        child: const Center(
+                        child: Center(
                           child: Text(
-                            '2',
-                            style: TextStyle(
+                            badgeCount > 99 ? '99+' : '$badgeCount',
+                            style: const TextStyle(
                               fontSize: 9,
                               fontWeight: FontWeight.w800,
                               color: Colors.white,

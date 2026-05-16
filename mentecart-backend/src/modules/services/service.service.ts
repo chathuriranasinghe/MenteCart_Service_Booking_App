@@ -32,7 +32,7 @@ export class ServiceService {
     const service = await this.serviceRepository.findById(serviceId);
 
     if (!service) {
-      throw new AppError('Service not found', 404);
+      throw new AppError('Service not found', 404, 'SERVICE_NOT_FOUND');
     }
 
     return this.mapServiceResponse(service, true);

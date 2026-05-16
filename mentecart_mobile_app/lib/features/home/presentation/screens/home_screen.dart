@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:mentecart_mobile_app/core/services/auth_storage.dart';
 import 'package:mentecart_mobile_app/features/services/presentation/screens/service_detail_screen.dart';
 import '../../../../app/routes/app_routes.dart';
 import '../../../../app/theme/app_colors.dart';
+import '../../../../core/services/favorites_storage.dart';
+import '../../../../features/services/data/service_repository.dart';
+import '../../../../features/services/presentation/screens/services_screen_args.dart';
 import '../widgets/bottom_nav_bar.dart';
 import '../widgets/category_card.dart';
 import '../widgets/home_header.dart';
@@ -17,8 +21,12 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   final _searchController = TextEditingController();
-
   int _currentIndex = 0;
+  List<_ServiceItem> _services = [];
+  List<_ServiceItem> _favoriteServices = [];
+  Set<String> _favoriteIds = {};
+  bool _isLoading = true;
+  String _userName = '';
 
   final List<_CategoryItem> _categories = const [
     _CategoryItem(
@@ -43,36 +51,84 @@ class _HomeScreenState extends State<HomeScreen> {
     ),
   ];
 
-  final List<_ServiceItem> _services = const [
-    _ServiceItem(
-      title: 'Home Cleaning',
-      description: 'Professional home cleaning service',
-      price: '₹699',
-      imageUrl:
-          'https://images.unsplash.com/photo-1581578731548-c64695cc6952?q=80&w=600',
-    ),
-    _ServiceItem(
-      title: 'Plumbing Repair',
-      description: 'Fix leaks, pipes and installations',
-      price: '₹499',
-      imageUrl:
-          'https://images.unsplash.com/photo-1607472586893-edb57bdc0e39?q=80&w=600',
-    ),
-    _ServiceItem(
-      title: 'Tutoring',
-      description: 'Expert tutors for all subjects',
-      price: '₹399',
-      imageUrl:
-          'https://images.unsplash.com/photo-1588072432836-e10032774350?q=80&w=600',
-    ),
-    _ServiceItem(
-      title: 'Beauty Appointment',
-      description: 'Salon and beauty care at home',
-      price: '₹799',
-      imageUrl:
-          'https://images.unsplash.com/photo-1560066984-138dadb4c035?q=80&w=600',
-    ),
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _loadServices();
+    _loadUserName();
+  }
+
+  Future<void> _loadUserName() async {
+    final name = await AuthStorage.getName();
+    if (mounted) setState(() => _userName = name ?? '');
+  }
+
+  Future<void> _loadServices() async {
+    setState(() => _isLoading = true);
+    try {
+      final favIds = await FavoritesStorage.getIds();
+      final favIdSet = favIds.toSet();
+
+      final data = await ServiceRepository.getServices(limit: 2);
+      final list = data['services'] as List<dynamic>;
+      final items = list.map((s) => _ServiceItem(
+            id: s['id'] as String,
+            title: s['title'] as String,
+            description: s['description'] as String,
+            price: 'Rs. ${s['price']}',
+            duration: '${s['duration']} min',
+            rating: (s['rating'] ?? 4.5).toDouble(),
+            reviewCount: (s['reviewCount'] ?? 0) as int,
+            imageUrl: s['image'] as String,
+          )).toList();
+
+      List<_ServiceItem> favItems = [];
+      if (favIdSet.isNotEmpty) {
+        final favData = await ServiceRepository.getServices(limit: 50);
+        final allList = favData['services'] as List<dynamic>;
+        favItems = allList
+            .where((s) => favIdSet.contains(s['id'] as String))
+            .map((s) => _ServiceItem(
+                  id: s['id'] as String,
+                  title: s['title'] as String,
+                  description: s['description'] as String,
+                  price: 'Rs. ${s['price']}',
+                  duration: '${s['duration']} min',
+                  rating: (s['rating'] ?? 4.5).toDouble(),
+                  reviewCount: (s['reviewCount'] ?? 0) as int,
+                  imageUrl: s['image'] as String,
+                ))
+            .toList();
+      }
+
+      setState(() {
+        _services = items;
+        _favoriteServices = favItems;
+        _favoriteIds = favIdSet;
+      });
+    } catch (_) {
+      // keep empty list on error
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _toggleFavorite(String id) async {
+    await FavoritesStorage.toggle(id);
+    final updatedIds = await FavoritesStorage.getIds();
+    final updatedSet = updatedIds.toSet();
+
+    // rebuild favorites list from already-loaded services
+    final allLoaded = [..._services, ..._favoriteServices];
+    final seen = <String>{};
+    final unique = allLoaded.where((s) => seen.add(s.id)).toList();
+    final newFavItems = unique.where((s) => updatedSet.contains(s.id)).toList();
+
+    setState(() {
+      _favoriteIds = updatedSet;
+      _favoriteServices = newFavItems;
+    });
+  }
 
   @override
   void dispose() {
@@ -80,38 +136,37 @@ class _HomeScreenState extends State<HomeScreen> {
     super.dispose();
   }
 
-  void _handleFilterPressed() {
-    // TODO: Open filter bottom sheet.
+  void _handleSearch(String query) {
+    final q = query.trim();
+    if (q.isEmpty) return;
+    Navigator.pushNamed(
+      context,
+      AppRoutes.services,
+      arguments: ServicesScreenArgs(search: q),
+    );
   }
 
-  void _handleNavItemSelected(int index) {
-    if (index == _currentIndex) {
-      return;
-    }
+void _handleNavItemSelected(int index) {
+    if (index == _currentIndex) return;
 
     if (index == 1) {
       Navigator.pushReplacementNamed(context, AppRoutes.services);
       return;
     }
-
     if (index == 2) {
       Navigator.pushReplacementNamed(context, AppRoutes.cart);
       return;
     }
-
     if (index == 3) {
       Navigator.pushReplacementNamed(context, AppRoutes.bookings);
       return;
     }
-
     if (index == 4) {
       Navigator.pushReplacementNamed(context, AppRoutes.profile);
       return;
     }
 
-    setState(() {
-      _currentIndex = index;
-    });
+    setState(() => _currentIndex = index);
   }
 
   @override
@@ -128,21 +183,19 @@ class _HomeScreenState extends State<HomeScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const HomeHeader(),
-
+              HomeHeader(userName: _userName),
               const SizedBox(height: 24),
-
               HomeSearchBar(
                 controller: _searchController,
-                onFilterPressed: _handleFilterPressed,
+                onSubmitted: _handleSearch,
               ),
-
               const SizedBox(height: 24),
-
-              _SectionTitle(title: 'Categories', onViewAllPressed: () {}),
-
+              _SectionTitle(
+                title: 'Categories',
+                onViewAllPressed: () =>
+                    Navigator.pushNamed(context, AppRoutes.categories),
+              ),
               const SizedBox(height: 14),
-
               SizedBox(
                 height: 98,
                 child: ListView.separated(
@@ -151,61 +204,140 @@ class _HomeScreenState extends State<HomeScreen> {
                   separatorBuilder: (_, __) => const SizedBox(width: 12),
                   itemBuilder: (context, index) {
                     final category = _categories[index];
-
                     return CategoryCard(
                       title: category.title,
                       icon: category.icon,
                       backgroundColor: category.color,
+                      onTap: () => Navigator.pushNamed(
+                        context,
+                        AppRoutes.services,
+                        arguments: category.title,
+                      ),
                     );
                   },
                 ),
               ),
-
               const SizedBox(height: 24),
-
               _SectionTitle(
                 title: 'Featured Services',
-                onViewAllPressed: () {},
+                onViewAllPressed: () =>
+                    Navigator.pushNamed(context, AppRoutes.services),
               ),
-
               const SizedBox(height: 14),
-
-              GridView.builder(
-                itemCount: _services.length,
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2,
-                  mainAxisExtent: 230,
-                  crossAxisSpacing: 14,
-                  mainAxisSpacing: 14,
-                ),
-                itemBuilder: (context, index) {
-                  final service = _services[index];
-
-                  return ServiceCard(
-                    title: service.title,
-                    description: service.description,
-                    price: service.price,
-                    imageUrl: service.imageUrl,
-                    onTap: () {
-                      Navigator.pushNamed(
-                        context,
-                        AppRoutes.serviceDetail,
-                        arguments: ServiceDetailArgs(
+              _isLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : GridView.builder(
+                      itemCount: _services.length,
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      gridDelegate:
+                          const SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: 2,
+                        mainAxisExtent: 230,
+                        crossAxisSpacing: 14,
+                        mainAxisSpacing: 14,
+                      ),
+                      itemBuilder: (context, index) {
+                        final service = _services[index];
+                        return ServiceCard(
                           title: service.title,
                           description: service.description,
                           price: service.price,
-                          duration: '60 min',
-                          rating: 4.6,
-                          reviewCount: 234,
                           imageUrl: service.imageUrl,
-                        ),
-                      );
-                    },
-                  );
-                },
+                          isFavorite: _favoriteIds.contains(service.id),
+                          onFavoriteToggle: () => _toggleFavorite(service.id),
+                          onTap: () {
+                            Navigator.pushNamed(
+                              context,
+                              AppRoutes.serviceDetail,
+                              arguments: ServiceDetailArgs(
+                                id: service.id,
+                                title: service.title,
+                                description: service.description,
+                                price: service.price,
+                                duration: service.duration,
+                                rating: service.rating,
+                                reviewCount: service.reviewCount,
+                                imageUrl: service.imageUrl,
+                              ),
+                            ).then((_) => _loadServices());
+                          },
+                        );
+                      },
+                    ),
+              const SizedBox(height: 24),
+              _SectionTitle(
+                title: 'Favorite Services',
+                onViewAllPressed: () {},
               ),
+              const SizedBox(height: 14),
+              if (_isLoading)
+                const Center(child: CircularProgressIndicator())
+              else if (_favoriteServices.isEmpty)
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(vertical: 28),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: const Color(0xFFE5E7EB)),
+                  ),
+                  child: const Column(
+                    children: [
+                      Icon(Icons.favorite_border_rounded,
+                          size: 36, color: Color(0xFFD1D5DB)),
+                      SizedBox(height: 10),
+                      Text(
+                        'No favorite services selected yet',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF9CA3AF),
+                        ),
+                      ),
+                    ],
+                  ),
+                )
+              else
+                GridView.builder(
+                  itemCount: _favoriteServices.length,
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  gridDelegate:
+                      const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 2,
+                    mainAxisExtent: 230,
+                    crossAxisSpacing: 14,
+                    mainAxisSpacing: 14,
+                  ),
+                  itemBuilder: (context, index) {
+                    final service = _favoriteServices[index];
+                    return ServiceCard(
+                      title: service.title,
+                      description: service.description,
+                      price: service.price,
+                      imageUrl: service.imageUrl,
+                      isFavorite: true,
+                      onFavoriteToggle: () => _toggleFavorite(service.id),
+                      onTap: () {
+                        Navigator.pushNamed(
+                          context,
+                          AppRoutes.serviceDetail,
+                          arguments: ServiceDetailArgs(
+                            id: service.id,
+                            title: service.title,
+                            description: service.description,
+                            price: service.price,
+                            duration: service.duration,
+                            rating: service.rating,
+                            reviewCount: service.reviewCount,
+                            imageUrl: service.imageUrl,
+                          ),
+                        ).then((_) => _loadServices());
+                      },
+                    );
+                  },
+                ),
             ],
           ),
         ),
@@ -266,14 +398,22 @@ class _CategoryItem {
 
 class _ServiceItem {
   const _ServiceItem({
+    required this.id,
     required this.title,
     required this.description,
     required this.price,
+    required this.duration,
+    required this.rating,
+    required this.reviewCount,
     required this.imageUrl,
   });
 
+  final String id;
   final String title;
   final String description;
   final String price;
+  final String duration;
+  final double rating;
+  final int reviewCount;
   final String imageUrl;
 }

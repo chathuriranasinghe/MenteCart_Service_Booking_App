@@ -15,11 +15,11 @@ import { UserDocument } from './user.model';
 export class AuthService {
   constructor(private readonly authRepository: AuthRepository) { }
 
-  async register(payload: RegisterDto): Promise<AuthUserResponseDto> {
+  async register(payload: RegisterDto): Promise<LoginResponseDto> {
     const existingUser = await this.authRepository.findByEmail(payload.email);
 
     if (existingUser) {
-      throw new AppError('Email is already registered', 409);
+      throw new AppError('Email is already registered', 409, 'EMAIL_ALREADY_EXISTS');
     }
 
     const hashedPassword = await bcrypt.hash(payload.password, 10);
@@ -29,14 +29,24 @@ export class AuthService {
       password: hashedPassword,
     });
 
-    return this.mapUserResponse(user);
+    const signOptions: SignOptions = {
+      expiresIn: envConfig.jwtExpiresIn as SignOptions['expiresIn'],
+    };
+
+    const token = jwt.sign(
+      { userId: user._id.toString(), email: user.email },
+      envConfig.jwtSecret,
+      signOptions,
+    );
+
+    return { token, user: this.mapUserResponse(user) };
   }
 
   async login(payload: LoginDto): Promise<LoginResponseDto> {
     const user = await this.authRepository.findByEmail(payload.email);
 
     if (!user) {
-      throw new AppError('Invalid email or password', 401);
+      throw new AppError('Invalid email or password', 401, 'INVALID_CREDENTIALS');
     }
 
     const isPasswordValid = await bcrypt.compare(
@@ -45,7 +55,7 @@ export class AuthService {
     );
 
     if (!isPasswordValid) {
-      throw new AppError('Invalid email or password', 401);
+      throw new AppError('Invalid email or password', 401, 'INVALID_CREDENTIALS');
     }
 
     const signOptions: SignOptions = {
@@ -71,7 +81,7 @@ export class AuthService {
     const user = await this.authRepository.findById(userId);
 
     if (!user) {
-      throw new AppError('User not found', 404);
+      throw new AppError('User not found', 404, 'USER_NOT_FOUND');
     }
 
     return this.mapUserResponse(user);

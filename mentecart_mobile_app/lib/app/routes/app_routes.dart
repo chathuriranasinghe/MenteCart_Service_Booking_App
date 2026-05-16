@@ -12,4 +12,9 @@ class AppRoutes {
   static const String checkout = '/checkout';
   static const String bookings = '/bookings';
   static const String profile = '/profile';
+  static const String categories = '/categories';
+  static const String terms = '/terms';
+  static const String privacyPolicy = '/privacy-policy';
+  static const String bookingDetail = '/booking-detail';
+  static const String payhereWebView = '/payhere-webview';
 }

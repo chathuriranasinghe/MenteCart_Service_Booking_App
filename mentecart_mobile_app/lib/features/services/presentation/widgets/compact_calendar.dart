@@ -140,6 +140,7 @@ class _CompactCalendarState extends State<CompactCalendar> {
 
                 final date = DateTime(_displayMonth.year, _displayMonth.month, day);
                 final isPast = date.isBefore(DateTime(today.year, today.month, today.day));
+                final isDisabled = isPast;
                 final isSelected = date.year == widget.selectedDate.year &&
                     date.month == widget.selectedDate.month &&
                     date.day == widget.selectedDate.day;
@@ -148,7 +149,7 @@ class _CompactCalendarState extends State<CompactCalendar> {
                     date.day == today.day;
 
                 return GestureDetector(
-                  onTap: isPast ? null : () => widget.onDateSelected(date),
+                  onTap: isDisabled ? null : () => widget.onDateSelected(date),
                   child: Container(
                     width: 32,
                     height: 32,

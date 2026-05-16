@@ -5,6 +5,11 @@ export interface UserDocument extends Document {
   email: string;
   phoneNumber: string;
   password: string;
+  address?: {
+    label: string;
+    line: string;
+    phone: string;
+  };
   createdAt: Date;
   updatedAt: Date;
 }
@@ -32,6 +37,11 @@ const userSchema = new Schema<UserDocument>(
       type: String,
       required: true,
       select: true,
+    },
+    address: {
+      label: { type: String, trim: true },
+      line: { type: String, trim: true },
+      phone: { type: String, trim: true },
     },
   },
   {

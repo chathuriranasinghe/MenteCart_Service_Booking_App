@@ -1,6 +1,15 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../../../app/routes/app_routes.dart';
 import '../../../../app/theme/app_colors.dart';
+import '../../../bookings/data/booking_repository.dart';
+import '../../../cart/bloc/cart_bloc.dart';
+import '../../../cart/data/cart_repository.dart';
+import '../../../profile/data/profile_repository.dart';
+import '../../data/payhere_repository.dart';
+import '../screens/payhere/payhere_webview_screen.dart';
 import '../widgets/checkout_address_card.dart';
 import '../widgets/checkout_payment_method_card.dart';
 import '../widgets/checkout_summary_card.dart';
@@ -15,24 +24,60 @@ class CheckoutScreen extends StatefulWidget {
 class _CheckoutScreenState extends State<CheckoutScreen> {
   int _selectedPaymentIndex = 0;
   bool _isProcessing = false;
+  Map<String, dynamic>? _cart;
+
+  String _addressTitle = 'Home';
+  String _addressLine = 'No 25, Lake Road, Colombo 03, Sri Lanka';
+  String _addressPhone = '+94 77 123 4567';
 
   final List<_PaymentMethod> _paymentMethods = const [
     _PaymentMethod(
       title: 'Credit / Debit Card',
+      apiValue: 'card',
       subtitle: 'Pay securely using Visa or Mastercard',
       icon: Icons.credit_card_rounded,
     ),
     _PaymentMethod(
       title: 'Online Banking',
+      apiValue: 'pay_on_arrival',
       subtitle: 'Pay using your bank account',
       icon: Icons.account_balance_rounded,
     ),
     _PaymentMethod(
       title: 'Cash on Service',
+      apiValue: 'cash',
       subtitle: 'Pay after the service is completed',
       icon: Icons.payments_outlined,
     ),
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCart();
+    _loadAddress();
+  }
+
+  Future<void> _loadAddress() async {
+    try {
+      final data = await ProfileRepository.getProfile();
+      final addr = data['address'] as Map<String, dynamic>?;
+      if (addr != null && mounted) {
+        setState(() {
+          _addressTitle = addr['label'] as String? ?? _addressTitle;
+          _addressLine = addr['line'] as String? ?? _addressLine;
+          _addressPhone = addr['phone'] as String? ?? _addressPhone;
+        });
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _loadCart() async {
+    try {
+      final data = await CartRepository.getCart();
+      if (mounted) setState(() => _cart = data);
+    } catch (_) {}
+  }
 
   void _handlePaymentSelected(int index) {
     setState(() {
@@ -41,27 +86,197 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   }
 
   void _handleAddressChange() {
-    // TODO: Navigate to address selection screen.
+    final titleController = TextEditingController(text: _addressTitle);
+    final addressController = TextEditingController(text: _addressLine);
+    final phoneController = TextEditingController(text: _addressPhone);
+
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) => Padding(
+        padding: EdgeInsets.fromLTRB(
+          24,
+          20,
+          24,
+          MediaQuery.of(ctx).viewInsets.bottom + 32,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE5E7EB),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+            const Text(
+              'Edit Service Address',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w900,
+                color: Color(0xFF111827),
+              ),
+            ),
+            const SizedBox(height: 20),
+            _AddressField(
+              label: 'Label (e.g. Home, Office)',
+              controller: titleController,
+              icon: Icons.label_outline_rounded,
+            ),
+            const SizedBox(height: 14),
+            _AddressField(
+              label: 'Full Address',
+              controller: addressController,
+              icon: Icons.location_on_outlined,
+              maxLines: 2,
+            ),
+            const SizedBox(height: 14),
+            _AddressField(
+              label: 'Phone Number',
+              controller: phoneController,
+              icon: Icons.phone_outlined,
+              keyboardType: TextInputType.phone,
+            ),
+            const SizedBox(height: 24),
+            SizedBox(
+              width: double.infinity,
+              height: 50,
+              child: ElevatedButton(
+                onPressed: () async {
+                  if (titleController.text.trim().isEmpty ||
+                      addressController.text.trim().isEmpty ||
+                      phoneController.text.trim().isEmpty) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Please fill in all fields'),
+                      ),
+                    );
+                    return;
+                  }
+                  try {
+                    await ProfileRepository.updateProfile(
+                      address: {
+                        'label': titleController.text.trim(),
+                        'line': addressController.text.trim(),
+                        'phone': phoneController.text.trim(),
+                      },
+                    );
+                    if (mounted) {
+                      setState(() {
+                        _addressTitle = titleController.text.trim();
+                        _addressLine = addressController.text.trim();
+                        _addressPhone = phoneController.text.trim();
+                      });
+                      Navigator.pop(ctx);
+                    }
+                  } on DioException catch (e) {
+                    final msg =
+                        e.response?.data?['message'] ??
+                        'Failed to save address';
+                    if (mounted) {
+                      ScaffoldMessenger.of(
+                        context,
+                      ).showSnackBar(SnackBar(content: Text(msg.toString())));
+                    }
+                  }
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                ),
+                child: const Text(
+                  'Save Address',
+                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   Future<void> _handleConfirmPayment() async {
-    if (_isProcessing) {
-      return;
+    if (_isProcessing) return;
+    setState(() => _isProcessing = true);
+    try {
+      final booking = await BookingRepository.checkout(
+        _paymentMethods[_selectedPaymentIndex].apiValue,
+      );
+      if (!mounted) return;
+      context.read<CartBloc>().add(CartFetchRequested());
+
+      if (_paymentMethods[_selectedPaymentIndex].apiValue == 'card') {
+        await _launchPayhereWebView(booking['bookingNumber'] as String);
+      } else {
+        _showPaymentSuccessDialog();
+      }
+    } on DioException catch (e) {
+      if (!mounted) return;
+      final msg = e.response?.data?['message'] ?? 'Checkout failed';
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(msg.toString())));
+    } finally {
+      if (mounted) setState(() => _isProcessing = false);
     }
+  }
 
-    setState(() {
-      _isProcessing = true;
-    });
+  Future<void> _launchPayhereWebView(String bookingNumber) async {
+    try {
+      final params = await PayhereRepository.getCheckoutParams(bookingNumber);
+      if (!mounted) return;
 
-    await Future.delayed(const Duration(seconds: 1));
+      final result = await Navigator.pushNamed(
+        context,
+        AppRoutes.payhereWebView,
+        arguments: PayhereWebViewArgs(
+          checkoutUrl: params['checkoutUrl'] as String,
+          merchantId: params['merchantId'] as String,
+          orderId: params['orderId'] as String,
+          amount: params['amount'] as String,
+          currency: params['currency'] as String,
+          hash: params['hash'] as String,
+          customerName: _addressTitle,
+          customerEmail: '',
+          customerPhone: _addressPhone,
+        ),
+      );
 
-    if (!mounted) return;
-
-    setState(() {
-      _isProcessing = false;
-    });
-
-    _showPaymentSuccessDialog();
+      if (!mounted) return;
+      if (result == null || result.toString().contains('cancelled')) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Payment was cancelled.')));
+      } else if (result.toString().contains('failed')) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Payment failed. Please try again.')),
+        );
+      } else {
+        // success or pending — navigate to bookings
+        _showPaymentSuccessDialog();
+      }
+    } on DioException catch (e) {
+      if (!mounted) return;
+      final msg = e.response?.data?['message'] ?? 'Failed to load payment';
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(msg.toString())));
+    }
   }
 
   void _showPaymentSuccessDialog() {
@@ -117,7 +332,11 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                   child: ElevatedButton(
                     onPressed: () {
                       Navigator.pop(context);
-                      Navigator.pop(context);
+                      Navigator.pushNamedAndRemoveUntil(
+                        context,
+                        AppRoutes.bookings,
+                        (r) => false,
+                      );
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.primary,
@@ -144,16 +363,19 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     );
   }
 
-  String get _selectedPaymentTitle {
-    return _paymentMethods[_selectedPaymentIndex].title;
-  }
+  String get _selectedPaymentTitle =>
+      _paymentMethods[_selectedPaymentIndex].title;
+
+  String _formatCurrency(num value) => 'Rs. ${value.toInt()}';
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF9FAFB),
       bottomNavigationBar: _CheckoutBottomBar(
-        total: '₹2,646',
+        total: _cart != null
+            ? _formatCurrency((_cart!['subTotal'] as num) + 50 - 100)
+            : '—',
         isProcessing: _isProcessing,
         onConfirmPressed: _handleConfirmPayment,
       ),
@@ -169,9 +391,9 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     CheckoutAddressCard(
-                      title: 'Home',
-                      address: 'No 25, Lake Road, Colombo 03, Sri Lanka',
-                      phone: '+94 77 123 4567',
+                      title: _addressTitle,
+                      address: _addressLine,
+                      phone: _addressPhone,
                       onChangePressed: _handleAddressChange,
                     ),
 
@@ -181,30 +403,19 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
                     const SizedBox(height: 12),
 
-                    const _BookingItemCard(
-                      title: 'Home Cleaning',
-                      dateTime: '20 May 2025, 11.00 AM',
-                      quantity: 1,
-                      price: '₹699',
-                    ),
-
-                    const SizedBox(height: 10),
-
-                    const _BookingItemCard(
-                      title: 'Plumbing Repair',
-                      dateTime: '21 May 2025, 02.00 PM',
-                      quantity: 1,
-                      price: '₹499',
-                    ),
-
-                    const SizedBox(height: 10),
-
-                    const _BookingItemCard(
-                      title: 'Tutoring',
-                      dateTime: '22 May 2025, 06.00 PM',
-                      quantity: 2,
-                      price: '₹798',
-                    ),
+                    if (_cart != null)
+                      ...(_cart!['items'] as List<dynamic>).map(
+                        (i) => Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: _BookingItemCard(
+                            title: i['title'] as String,
+                            dateTime:
+                                '${i['selectedDate']}, ${i['selectedTime']}',
+                            quantity: (i['quantity'] as num).toInt(),
+                            price: _formatCurrency(i['total'] as num),
+                          ),
+                        ),
+                      ),
 
                     const SizedBox(height: 24),
 
@@ -238,11 +449,17 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
                     const SizedBox(height: 12),
 
-                    const CheckoutSummaryCard(
-                      subTotal: '₹2,795',
-                      platformFee: '₹50',
-                      discount: '- ₹199',
-                      total: '₹2,646',
+                    CheckoutSummaryCard(
+                      subTotal: _cart != null
+                          ? _formatCurrency(_cart!['subTotal'] as num)
+                          : '—',
+                      platformFee: 'Rs. 50',
+                      discount: '- Rs. 100',
+                      total: _cart != null
+                          ? _formatCurrency(
+                              (_cart!['subTotal'] as num) + 50 - 100,
+                            )
+                          : '—',
                     ),
 
                     const SizedBox(height: 14),
@@ -432,7 +649,6 @@ class _CheckoutBottomBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 92,
       padding: const EdgeInsets.fromLTRB(18, 12, 18, 16),
       decoration: BoxDecoration(
         color: Colors.white,
@@ -452,7 +668,7 @@ class _CheckoutBottomBar extends StatelessWidget {
             SizedBox(
               width: 105,
               child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text(
@@ -538,11 +754,60 @@ class _SectionTitle extends StatelessWidget {
 class _PaymentMethod {
   const _PaymentMethod({
     required this.title,
+    required this.apiValue,
     required this.subtitle,
     required this.icon,
   });
 
   final String title;
+  final String apiValue;
   final String subtitle;
   final IconData icon;
+}
+
+class _AddressField extends StatelessWidget {
+  const _AddressField({
+    required this.label,
+    required this.controller,
+    required this.icon,
+    this.keyboardType,
+    this.maxLines = 1,
+  });
+
+  final String label;
+  final TextEditingController controller;
+  final IconData icon;
+  final TextInputType? keyboardType;
+  final int maxLines;
+
+  @override
+  Widget build(BuildContext context) {
+    return TextField(
+      controller: controller,
+      keyboardType: keyboardType,
+      maxLines: maxLines,
+      decoration: InputDecoration(
+        labelText: label,
+        prefixIcon: Icon(icon, size: 20, color: const Color(0xFF6B7280)),
+        filled: true,
+        fillColor: const Color(0xFFF9FAFB),
+        contentPadding: const EdgeInsets.symmetric(
+          vertical: 14,
+          horizontal: 16,
+        ),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: const BorderSide(color: AppColors.primary),
+        ),
+      ),
+    );
+  }
 }

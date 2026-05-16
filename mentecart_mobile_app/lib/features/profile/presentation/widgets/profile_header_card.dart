@@ -9,12 +9,18 @@ class ProfileHeaderCard extends StatelessWidget {
     required this.email,
     required this.phoneNumber,
     required this.onEditPressed,
+    this.totalBookings = 0,
+    this.completedBookings = 0,
+    this.savedCount = 0,
   });
 
   final String name;
   final String email;
   final String phoneNumber;
   final VoidCallback onEditPressed;
+  final int totalBookings;
+  final int completedBookings;
+  final int savedCount;
 
   @override
   Widget build(BuildContext context) {
@@ -115,23 +121,23 @@ class ProfileHeaderCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 20),
-          const Row(
+          Row(
             children: [
               ProfileStatCard(
                 title: 'Bookings',
-                value: '12',
+                value: '$totalBookings',
                 icon: Icons.calendar_month_outlined,
               ),
-              SizedBox(width: 10),
+              const SizedBox(width: 10),
               ProfileStatCard(
                 title: 'Completed',
-                value: '08',
+                value: '$completedBookings',
                 icon: Icons.check_circle_outline_rounded,
               ),
-              SizedBox(width: 10),
+              const SizedBox(width: 10),
               ProfileStatCard(
                 title: 'Saved',
-                value: '05',
+                value: '$savedCount',
                 icon: Icons.favorite_border_rounded,
               ),
             ],

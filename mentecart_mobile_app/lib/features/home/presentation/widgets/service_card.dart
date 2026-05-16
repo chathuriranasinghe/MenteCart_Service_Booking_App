@@ -10,6 +10,8 @@ class ServiceCard extends StatelessWidget {
     required this.price,
     required this.imageUrl,
     required this.onTap,
+    this.isFavorite = false,
+    this.onFavoriteToggle,
   });
 
   final String title;
@@ -17,6 +19,8 @@ class ServiceCard extends StatelessWidget {
   final String price;
   final String imageUrl;
   final VoidCallback onTap;
+  final bool isFavorite;
+  final VoidCallback? onFavoriteToggle;
 
   @override
   Widget build(BuildContext context) {
@@ -46,22 +50,52 @@ class ServiceCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Expanded(
-                  child: Image.network(
-                    imageUrl,
-                    width: double.infinity,
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) {
-                      return Container(
-                        color: const Color(0xFFEFF3FF),
-                        child: const Center(
-                          child: Icon(
-                            Icons.home_repair_service_rounded,
-                            color: AppColors.primary,
-                            size: 36,
+                  child: Stack(
+                    children: [
+                      Image.network(
+                        imageUrl,
+                        width: double.infinity,
+                        height: double.infinity,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) {
+                          return Container(
+                            color: const Color(0xFFEFF3FF),
+                            child: const Center(
+                              child: Icon(
+                                Icons.home_repair_service_rounded,
+                                color: AppColors.primary,
+                                size: 36,
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                      if (onFavoriteToggle != null)
+                        Positioned(
+                          top: 8,
+                          right: 8,
+                          child: GestureDetector(
+                            onTap: onFavoriteToggle,
+                            child: Container(
+                              width: 32,
+                              height: 32,
+                              decoration: BoxDecoration(
+                                color: Colors.white.withAlpha(230),
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(
+                                isFavorite
+                                    ? Icons.favorite_rounded
+                                    : Icons.favorite_border_rounded,
+                                size: 18,
+                                color: isFavorite
+                                    ? const Color(0xFFE11D48)
+                                    : const Color(0xFF6B7280),
+                              ),
+                            ),
                           ),
                         ),
-                      );
-                    },
+                    ],
                   ),
                 ),
                 Padding(

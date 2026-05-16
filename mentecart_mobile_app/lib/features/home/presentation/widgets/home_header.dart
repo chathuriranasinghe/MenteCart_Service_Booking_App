@@ -1,20 +1,20 @@
 import 'package:flutter/material.dart';
 
-import '../../../../app/theme/app_colors.dart';
-
 class HomeHeader extends StatelessWidget {
-  const HomeHeader({super.key});
+  const HomeHeader({super.key, required this.userName});
+
+  final String userName;
 
   @override
   Widget build(BuildContext context) {
     return Row(
       children: [
-        const Expanded(
+        Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Hello, John 👋',
+                'Hello, $userName 👋',
                 style: TextStyle(
                   fontSize: 22,
                   fontWeight: FontWeight.w800,
@@ -33,39 +33,7 @@ class HomeHeader extends StatelessWidget {
             ],
           ),
         ),
-        Container(
-          width: 44,
-          height: 44,
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: const Color(0xFFE5E7EB)),
-          ),
-          child: Stack(
-            clipBehavior: Clip.none,
-            children: [
-              const Center(
-                child: Icon(
-                  Icons.notifications_none_rounded,
-                  color: Color(0xFF111827),
-                  size: 24,
-                ),
-              ),
-              Positioned(
-                top: 9,
-                right: 11,
-                child: Container(
-                  width: 8,
-                  height: 8,
-                  decoration: const BoxDecoration(
-                    color: AppColors.primary,
-                    shape: BoxShape.circle,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
+
       ],
     );
   }

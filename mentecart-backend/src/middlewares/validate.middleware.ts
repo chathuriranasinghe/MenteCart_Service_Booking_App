@@ -1,10 +1,10 @@
 import { NextFunction, Request, Response } from 'express';
-import { ZodObject, ZodError } from 'zod';
+import { ZodSchema, ZodError } from 'zod';
 
 import { ResponseBuilder } from '../core/utils/response-builder';
 
 export const validate =
-  (schema: ZodObject<any>) =>
+  (schema: ZodSchema) =>
   (req: Request, res: Response, next: NextFunction): Response | void => {
     try {
       schema.parse({
@@ -17,7 +17,7 @@ export const validate =
     } catch (error) {
       if (error instanceof ZodError) {
         const message = error.issues[0]?.message || 'Validation failed';
-        return ResponseBuilder.error(res, message, 400);
+        return ResponseBuilder.error(res, message, 400, 'VALIDATION_ERROR');
       }
 
       next(error);

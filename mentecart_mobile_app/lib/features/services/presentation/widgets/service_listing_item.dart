@@ -1,5 +1,6 @@
 class ServiceListingItem {
   const ServiceListingItem({
+    required this.id,
     required this.title,
     required this.category,
     required this.description,
@@ -10,6 +11,7 @@ class ServiceListingItem {
     required this.imageUrl,
   });
 
+  final String id;
   final String title;
   final String category;
   final String description;

@@ -8,4 +8,6 @@ export const envConfig = {
   jwtSecret: process.env.JWT_SECRET || '',
   jwtExpiresIn: process.env.JWT_EXPIRES_IN || '7d',
   nodeEnv: process.env.NODE_ENV || 'development',
+  payheremerchantId: process.env.PAYHERE_MERCHANT_ID || '',
+  payhereMerchantSecret: process.env.PAYHERE_MERCHANT_SECRET || '',
 };
